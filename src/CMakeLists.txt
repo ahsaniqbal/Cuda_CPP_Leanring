@@ -25,10 +25,10 @@ endif()
 
 set(CUDA_SEPARABLE_COMPILATION ON)
 
-add_library(CudaLearningLib ${CURRENT_HEADERS} ${CURRENT_SOURCES} ${CURRENT_CUDA_SOURCES})
+add_library(CVInCudaLib ${CURRENT_HEADERS} ${CURRENT_SOURCES} ${CURRENT_CUDA_SOURCES})
 # Set CUDA_ARCHITECTURES property after the target is created
-set_property(TARGET CudaLearningLib PROPERTY CUDA_ARCHITECTURES OFF)
-target_link_libraries(CudaLearningLib ${OpenCV_LIBS} ${CUDA_LIBRARIES})
+set_property(TARGET CVInCudaLib PROPERTY CUDA_ARCHITECTURES OFF)
+target_link_libraries(CVInCudaLib ${OpenCV_LIBS} ${CUDA_LIBRARIES})
 
-add_executable(CudaLearning ${CMAKE_CURRENT_SOURCE_DIR}/HelloWorld.cpp)
-target_link_libraries(CudaLearning CudaLearningLib)
+add_executable(CVInCuda ${CMAKE_CURRENT_SOURCE_DIR}/HelloWorld.cpp)
+target_link_libraries(CVInCuda CVInCudaLib)

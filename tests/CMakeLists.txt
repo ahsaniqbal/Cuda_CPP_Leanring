@@ -8,6 +8,6 @@ file(GLOB_RECURSE TEST_SOURCES *.cpp)
 add_executable(runTests ${TEST_SOURCES})
 
 # Link runTests with what we want to test and the GTest and pthread library
-target_link_libraries(runTests ${GTEST_LIBRARIES} pthread gtest_main CudaLearningLib)
+target_link_libraries(runTests ${GTEST_LIBRARIES} pthread gtest_main CVInCudaLib)
 
 gtest_discover_tests(runTests) # Discover tests and generate the test target

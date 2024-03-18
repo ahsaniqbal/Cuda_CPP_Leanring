@@ -5,7 +5,7 @@ set(CMAKE_CUDA_ARCHITECTURES OFF)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-project(CudaLearning LANGUAGES CXX CUDA)
+project(CVInCuda LANGUAGES CXX CUDA)
 
 add_subdirectory(src)
 
