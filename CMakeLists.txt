@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(CVInCuda LANGUAGES CXX CUDA)
 
+include_directories(include)
 add_subdirectory(src)
 
 enable_testing()
