@@ -3,40 +3,22 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
-/**
- * Constructs a 1D tensor with numElements elements
- *
- * @param numElements an unsigned integer, represents the number of elements in the tensor
- */
-template <typename T>
-Tensor<T>::Tensor(uint numElements) {
-    this->numElements = numElements;
-    data_h = new T[this->numElements];
-    cudaMalloc((void**)&data_d, this->numElements * sizeof(T));
- 
-    shape = {this->numElements};
-    strides = {1};
-}
-
+template class Tensor<double>;
+template class Tensor<float>;
+template class Tensor<int>;
 /**
  * Constructs a tensor with the given shape
  *
  * @param shape a vector of unsigned integers, represents the shape of the tensor
  */
 template <typename T>
-Tensor<T>::Tensor(std::vector<uint> shape) {
-    this->numElements = 1;
-    for (uint i = 0; i < shape.size(); i++) {
-        this->numElements *= shape[i];
-    }
-    data_h = new T[this->numElements];
-    cudaMalloc((void**)&data_d, this->numElements * sizeof(T));
- 
-    this->shape = shape;
+Tensor<T>::Tensor(std::vector<uint> shape): data_h(nullptr), data_d(nullptr), numElements(1), shape(shape), strides(shape.size(), 1) {
+    numElements = std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<uint>());
+    data_h = new T[numElements];
+    cudaMalloc((void**)&data_d, numElements * sizeof(T));
     
-    strides = {1};
-    for(uint i = shape.size() - 2; i >= 0; i--) {
-        strides.insert(strides.begin(), strides[0] * shape[i + 1]);
+    for (uint i = strides.size() - 2; i >= 0; i--) {
+        strides[i] = strides[i + 1] * shape[i + 1];
     }
 }
 
@@ -122,3 +104,59 @@ std::vector<uint> Tensor<T>::calculateResultShape(const Tensor<T>& other) {
 
     return resultShape;
 }
+
+template <typename T>
+std::vector<uint> Tensor<T>::calculateMultiDimIndex(uint linearIndex) const {
+    std::vector<uint> indices;
+    for (uint i = 0; i < shape.size(); i++) {
+        indices.push_back(linearIndex / strides[i]);
+        linearIndex %= strides[i];
+    }
+    return indices;
+}
+template <typename T>
+uint Tensor<T>::calculateLinearIndex(const std::vector<uint>& multiDimIndex) const {
+    uint linearIndex = 0;
+    uint offset = multiDimIndex.size() - shape.size();
+    for (uint i = 0; i < shape.size(); i++) {
+        linearIndex += multiDimIndex[i + offset] * strides[i];
+    }
+    return linearIndex;
+}
+template <typename T>
+std::vector<uint> Tensor<T>::calculateBroadcastedIndex(const std::vector<uint>& indices) const {
+    std::vector<uint> broadcastedIndices(indices.size(), 0);
+    uint offset = indices.size() - shape.size();
+    for (uint i = 0; i < shape.size(); i++) {
+        if (shape[i] != 1) {
+            broadcastedIndices[i + offset] = indices[i + offset];
+        }
+    }
+    return broadcastedIndices;
+}
+/**
+ * Adds two tensors
+ *
+ * @param a a tensor, represents the first tensor
+ * @param b a tensor, represents the second tensor
+ * @return a tensor, represents the sum of the two tensors
+ */
+/*template <typename T>
+Tensor<T> operator+(const Tensor<T>& a, Tensor<T>& b) {
+    a.validateShape(b);
+
+    Tensor<T> result(a.calculateResultShape(b));
+
+    for (uint i = 0; i < result.numElements; i++) {
+        vector<uint> indices = result.calculateMultiDimIndex(i);
+
+        vector<uint> aIndices = a.calculateBroadcastedIndex(indices);
+        vector<uint> bIndices = b.calculateBroadcastedIndex(indices);
+        
+        uint aIndex = a.calculateLinearIndex(aIndices);
+        uint bIndex = b.calculateLinearIndex(bIndices);
+        
+        result.data_h[i] = a.data_h[aIndex] + b.data_h[bIndex];
+    }
+    return result;
+}*/
