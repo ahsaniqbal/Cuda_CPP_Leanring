@@ -5,6 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <numeric>
+#include <algorithm>
 #define uint std::uint32_t
 
 template <typename T>

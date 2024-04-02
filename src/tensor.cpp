@@ -13,11 +13,16 @@ template class Tensor<int>;
  */
 template <typename T>
 Tensor<T>::Tensor(std::vector<uint> shape): data_h(nullptr), data_d(nullptr), numElements(1), shape(shape), strides(shape.size(), 1) {
+    auto countZeroDims = std::count(shape.begin(), shape.end(), 0);
+    if (countZeroDims >= 1) {
+        throw std::invalid_argument("Tensor cannot have dimension with size 0.");
+    }
+    
     numElements = std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<uint>());
     data_h = new T[numElements];
     cudaMalloc((void**)&data_d, numElements * sizeof(T));
     
-    for (uint i = strides.size() - 2; i >= 0; i--) {
+    for (int i = strides.size() - 2; i >= 0; i--) {
         strides[i] = strides[i + 1] * shape[i + 1];
     }
 }
@@ -71,7 +76,7 @@ void Tensor<T>::ToHost() {
  */
 template <typename T>
 void Tensor<T>::validateShape(const Tensor<T>& other) {
-    uint i = this->shape.size() - 1, j = other.shape.size() - 1;
+    int i = this->shape.size() - 1, j = other.shape.size() - 1;
 
     for (; i >= 0 and j >= 0; i--, j-- ) {
         if (this->shape[i] != other.shape[j] and (this->shape[i] != 1 or other.shape[j] != 1)) {
@@ -89,7 +94,7 @@ void Tensor<T>::validateShape(const Tensor<T>& other) {
 template <typename T>
 std::vector<uint> Tensor<T>::calculateResultShape(const Tensor<T>& other) {
     std::vector<uint> resultShape;
-    uint i = this->shape.size() - 1, j = other.shape.size() - 1;
+    int i = this->shape.size() - 1, j = other.shape.size() - 1;
 
     for (; i >= 0 and j >= 0; i--, j-- ) {
         resultShape.insert(resultShape.begin(), std::max(this->shape[i], other.shape[j]));
@@ -108,7 +113,7 @@ std::vector<uint> Tensor<T>::calculateResultShape(const Tensor<T>& other) {
 template <typename T>
 std::vector<uint> Tensor<T>::calculateMultiDimIndex(uint linearIndex) const {
     std::vector<uint> indices;
-    for (uint i = 0; i < shape.size(); i++) {
+    for (int i = 0; i < shape.size(); i++) {
         indices.push_back(linearIndex / strides[i]);
         linearIndex %= strides[i];
     }
@@ -118,7 +123,7 @@ template <typename T>
 uint Tensor<T>::calculateLinearIndex(const std::vector<uint>& multiDimIndex) const {
     uint linearIndex = 0;
     uint offset = multiDimIndex.size() - shape.size();
-    for (uint i = 0; i < shape.size(); i++) {
+    for (int i = 0; i < shape.size(); i++) {
         linearIndex += multiDimIndex[i + offset] * strides[i];
     }
     return linearIndex;
@@ -127,7 +132,7 @@ template <typename T>
 std::vector<uint> Tensor<T>::calculateBroadcastedIndex(const std::vector<uint>& indices) const {
     std::vector<uint> broadcastedIndices(indices.size(), 0);
     uint offset = indices.size() - shape.size();
-    for (uint i = 0; i < shape.size(); i++) {
+    for (int i = 0; i < shape.size(); i++) {
         if (shape[i] != 1) {
             broadcastedIndices[i + offset] = indices[i + offset];
         }
