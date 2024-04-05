@@ -10,6 +10,20 @@ __global__ void VectorAdd(float *vector1, float *vector2, float *result,
   }
 }
 
+__device__ void CalculateIndices(int linearResultIndex, int *resultShape, int *tensor1Shape, int *tensor2Shape,
+                                 int *resultStrides, int *tensor1Strides, int *tensor2Strides, int shapeSize,
+                                 int& tensor1Index, int& tensor2Index) {
+  tensor1Index = 0;
+  tensor2Index = 0;
+  for (int i = 0; i < shapeSize; i++) {
+    int dimIndex = linearResultIndex / resultStrides[i];
+    linearResultIndex %= resultStrides[i];
+    
+    tensor1Index += (tensor1Shape[i] == 1 ? 0 : dimIndex) * tensor1Strides[i];
+    tensor2Index += (tensor2Shape[i] == 1 ? 0 : dimIndex) * tensor2Strides[i];
+  }
+}
+
 /**
  * Adds two tensor of compatible shapes.
  * 
@@ -36,14 +50,15 @@ __global__ void TensorAdd(float *tensor1, float *tensor2, float *result,
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < numElements) {
     int index1 = 0, index2 = 0;
-    int tempIndex = index;
+    /*int tempIndex = index;
     for (int i = 0; i < shapeSize; i++) {
       int dimIndex = tempIndex / resultStrides[i];
       tempIndex %= resultStrides[i];
 
       index1 += (tensor1Shape[i] == 1 ? 0 : dimIndex) * tensor1Strides[i];
       index2 += (tensor2Shape[i] == 1 ? 0 : dimIndex) * tensor2Strides[i];
-    }
+    }*/
+    CalculateIndices(index, resultShape, tensor1Shape, tensor2Shape, resultStrides, tensor1Strides, tensor2Strides, shapeSize, index1, index2);
     result[index] = tensor1[index1] + tensor2[index2];
   }
 }
@@ -74,14 +89,15 @@ __global__ void TensorMul(float *tensor1, float *tensor2, float *result,
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < numElements) {
     int index1 = 0, index2 = 0;
-    int tempIndex = index;
+    /*int tempIndex = index;
     for (int i = 0; i < shapeSize; i++) {
       int dimIndex = tempIndex / resultStrides[i];
       tempIndex %= resultStrides[i];
 
       index1 += (tensor1Shape[i] == 1 ? 0 : dimIndex) * tensor1Strides[i];
       index2 += (tensor2Shape[i] == 1 ? 0 : dimIndex) * tensor2Strides[i];
-    }
+    }*/
+    CalculateIndices(index, resultShape, tensor1Shape, tensor2Shape, resultStrides, tensor1Strides, tensor2Strides, shapeSize, index1, index2);
     result[index] = tensor1[index1] * tensor2[index2];
   }
 }

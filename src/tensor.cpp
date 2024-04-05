@@ -12,15 +12,18 @@ template class Tensor<int>;
  * @param shape a vector of unsigned integers, represents the shape of the tensor
  */
 template <typename T>
-Tensor<T>::Tensor(std::vector<uint> shape): data_h(nullptr), data_d(nullptr), numElements(1), shape(shape), strides(shape.size(), 1) {
+Tensor<T>::Tensor(std::vector<uint> shape, bool isOnDevice): data_h(nullptr), data_d(nullptr), isOnDevice(isOnDevice), numElements(1), shape(shape), strides(shape.size(), 1) {
     auto countZeroDims = std::count(shape.begin(), shape.end(), 0);
     if (countZeroDims >= 1) {
         throw std::invalid_argument("Tensor cannot have dimension with size 0.");
     }
     
     numElements = std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<uint>());
-    data_h = new T[numElements];
-    cudaMalloc((void**)&data_d, numElements * sizeof(T));
+    if (this->isOnDevice) {
+        cudaMalloc((void**)&data_d, numElements * sizeof(T));
+    } else {
+        data_h = new T[numElements];
+    }
     
     for (int i = strides.size() - 2; i >= 0; i--) {
         strides[i] = strides[i + 1] * shape[i + 1];
@@ -34,14 +37,18 @@ Tensor<T>::Tensor(std::vector<uint> shape): data_h(nullptr), data_d(nullptr), nu
  */
 template <typename T>
 Tensor<T>::Tensor(Tensor<T>& other) {
-    data_h = new T[other.numElements];
-    cudaMalloc((void**)&data_d, other.numElements * sizeof(T));
-    
-    cudaMemcpy(data_d, other.data_d, other.numElements * sizeof(T), cudaMemcpyDeviceToDevice);
-    cudaMemcpy(data_h, other.data_h, other.numElements * sizeof(T), cudaMemcpyHostToHost);
+    this->isOnDevice = other.isOnDevice;
+    this->numElements = other.numElements;
+    this->shape = other.shape;
+    this->strides = other.strides;
 
-    shape = other.shape;
-    strides = other.strides;
+    if (this->isOnDevice) {
+        cudaMalloc((void**)&data_d, this->numElements * sizeof(T));
+        cudaMemcpy(data_d, other.data_d, this->numElements * sizeof(T), cudaMemcpyDeviceToDevice);
+    } else {
+        data_h = new T[this->numElements];
+        cudaMemcpy(data_h, other.data_h, this->numElements * sizeof(T), cudaMemcpyHostToHost);
+    }
 }
 
 /**
@@ -49,8 +56,11 @@ Tensor<T>::Tensor(Tensor<T>& other) {
  */
 template <typename T>
 Tensor<T>::~Tensor() {
-    delete[] data_h;
-    cudaFree(data_d);
+    if (data_h != nullptr)
+        delete[] data_h;
+    
+    if (data_d != nullptr)
+        cudaFree(data_d);
 }
 
 /**
@@ -58,7 +68,17 @@ Tensor<T>::~Tensor() {
  */
 template <typename T>
 void Tensor<T>::ToDevice() {
-    cudaMemcpy(data_d, data_h, numElements * sizeof(T), cudaMemcpyHostToDevice);
+    if (!this->isOnDevice) {
+        if (data_d == nullptr) {
+            cudaMalloc((void**)&data_d, numElements * sizeof(T));
+        }
+        cudaMemcpy(data_d, data_h, numElements * sizeof(T), cudaMemcpyHostToDevice);
+
+        this->isOnDevice = true;
+
+        delete []data_h;
+        data_h = nullptr;
+    }
 }
 
 /**
@@ -66,7 +86,17 @@ void Tensor<T>::ToDevice() {
  */
 template <typename T>
 void Tensor<T>::ToHost() {
-    cudaMemcpy(data_h, data_d, numElements * sizeof(T), cudaMemcpyDeviceToHost);
+    if (this->isOnDevice) {
+        if (data_h == nullptr) {
+            data_h = new T[numElements];
+        }
+        cudaMemcpy(data_h, data_d, numElements * sizeof(T), cudaMemcpyDeviceToHost);
+
+        this->isOnDevice = false;
+        
+        cudaFree(data_d);
+        data_d = nullptr;
+    }
 }
 
 /**
@@ -106,7 +136,6 @@ std::vector<uint> Tensor<T>::calculateResultShape(const Tensor<T>& other) {
     for (; j >= 0; j--) {
         resultShape.insert(resultShape.begin(), other.shape[j]);
     }
-
     return resultShape;
 }
 
@@ -146,22 +175,30 @@ std::vector<uint> Tensor<T>::calculateBroadcastedIndex(const std::vector<uint>& 
  * @param b a tensor, represents the second tensor
  * @return a tensor, represents the sum of the two tensors
  */
-/*template <typename T>
-Tensor<T> operator+(const Tensor<T>& a, Tensor<T>& b) {
-    a.validateShape(b);
+template <typename T>
+//Tensor<T> operator+(const Tensor<T>& a, Tensor<T>& b) {
+Tensor<T> Tensor<T>::operator+(const Tensor<T>& b) {
+    if (isOnDevice != b.isOnDevice) {
+        throw std::invalid_argument("Tensors must be on the same device");
+    }
+    validateShape(b);
+    Tensor<T> result(calculateResultShape(b), isOnDevice);
 
-    Tensor<T> result(a.calculateResultShape(b));
-
-    for (uint i = 0; i < result.numElements; i++) {
-        vector<uint> indices = result.calculateMultiDimIndex(i);
-
-        vector<uint> aIndices = a.calculateBroadcastedIndex(indices);
-        vector<uint> bIndices = b.calculateBroadcastedIndex(indices);
+    if (isOnDevice) {
         
-        uint aIndex = a.calculateLinearIndex(aIndices);
-        uint bIndex = b.calculateLinearIndex(bIndices);
-        
-        result.data_h[i] = a.data_h[aIndex] + b.data_h[bIndex];
+    }
+    else {
+        for (uint i = 0; i < result.numElements; i++) {
+            std::vector<uint> indices = result.calculateMultiDimIndex(i);
+
+            std::vector<uint> aIndices = calculateBroadcastedIndex(indices);
+            std::vector<uint> bIndices = b.calculateBroadcastedIndex(indices);
+            
+            uint aIndex = calculateLinearIndex(aIndices);
+            uint bIndex = b.calculateLinearIndex(bIndices);
+            
+            result.data_h[i] = data_h[aIndex] + b.data_h[bIndex];
+        }
     }
     return result;
-}*/
+}
