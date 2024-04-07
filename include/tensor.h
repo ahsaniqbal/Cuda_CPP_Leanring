@@ -6,15 +6,15 @@
 #include <vector>
 #include <numeric>
 #include <algorithm>
+#include <math.h>
+#include <cuda_runtime.h>
 #define uint std::uint32_t
 
 
-
-template <typename T>
 class Tensor {
 private:
-    T* data_h;
-    T* data_d;
+    float* data_h;
+    float* data_d;
     bool isOnDevice;
 
     uint numElements;
@@ -22,29 +22,28 @@ private:
     std::vector<uint> strides;
 public:
     Tensor(std::vector<uint> shape, bool isOnDevice);
-    Tensor(Tensor<T>& other);
+    Tensor(Tensor& other);
     ~Tensor();
 
-    std::vector<uint> getShape() const { return shape; }
-    std::vector<uint> getStrides() const { return strides; }
-    uint getNumElements() const { return numElements; }
+    std::vector<uint> GetShape() const { return shape; }
+    std::vector<uint> GetStrides() const { return strides; }
+    float* GetData() const { return isOnDevice ? data_d : data_h; }
+    uint GetNumElements() const { return numElements; }
 
     void ToDevice();
     void ToHost();
 
-    std::vector<uint> calculateMultiDimIndex(uint linearIndex) const;
-    uint calculateLinearIndex(const std::vector<uint>& multiDimIndex) const;
-    std::vector<uint> calculateBroadcastedIndex(const std::vector<uint>& indices) const;
+    uint CalculateLinearIndex(uint referenceLinearIndex, const std::vector<uint>& referenceShape, const std::vector<uint>& referenceStrides) const;
+    std::vector<uint> CalculateBroadcastedShape(const uint referenceShapeSize) const;
+    std::vector<uint> CalculateBroadcastedStrides(const uint referenceShapeSize) const;
 
-    void validateShape(const Tensor<T>& other);
-    std::vector<uint> calculateResultShape(const Tensor<T>& other);
+    void ValidateShape(const Tensor& other);
+    std::vector<uint> CalculateBroadcastResultShape(const Tensor& other) const;
 
-    //template <typename U>
-    //friend Tensor<U> operator+(const Tensor<U>& a, Tensor<U>& b);
-
-    Tensor<T> operator+(const Tensor<T>& b);
+    Tensor operator+(Tensor& b);
 };
+void LaunchAddKernel(Tensor &result, Tensor &tensor1, Tensor &tensor2);
 
-//template <typename T>
-//Tensor<T> operator+(const Tensor<T>& a, Tensor<T>& b);
+__host__ __device__ uint CalculateLinearIndex(uint referenceLinearIndex, const uint *referenceShape, const uint *tensorShape,
+                                 const uint *referenceStrides, const uint *tensorStrides, const uint shapeSize);
 #endif

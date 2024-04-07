@@ -3,7 +3,7 @@
 
 class TensorTest : public ::testing::Test {
 protected:
-    Tensor<float>* tensorPtr;
+    Tensor* tensorPtr;
 
     void SetUp() override {
         // Initialize tensor here if necessary
@@ -16,27 +16,27 @@ protected:
 
 TEST_F(TensorTest, ConstructorThrowsOnZeroDimension) {
     std::vector<uint> shape = {3, 0, 2}; // Shape with a dimension of size 0
-    EXPECT_THROW(Tensor<int> tensor(shape, false), std::invalid_argument);
+    EXPECT_THROW(Tensor tensor(shape, false), std::invalid_argument);
 }
 
 TEST_F(TensorTest, TestShape) {
     std::vector<uint> expectedShape = {1, 2, 3};
-    tensorPtr = new Tensor<float>(expectedShape, false);
-    EXPECT_EQ(tensorPtr->getShape(), expectedShape);
+    tensorPtr = new Tensor(expectedShape, false);
+    EXPECT_EQ(tensorPtr->GetShape(), expectedShape);
     delete tensorPtr;
 }
 
 TEST_F(TensorTest, TestNumElements) {
     std::vector<uint> shape = {2, 3, 4};
-    tensorPtr = new Tensor<float>(shape, false);
-    EXPECT_EQ(tensorPtr->getNumElements(), 2*3*4);
+    tensorPtr = new Tensor(shape, false);
+    EXPECT_EQ(tensorPtr->GetNumElements(), 2*3*4);
     delete tensorPtr;
 }
 
 TEST_F(TensorTest, TestStrides) {
     std::vector<uint> shape = {2, 3, 4};
-    tensorPtr = new Tensor<float>(shape, false);
+    tensorPtr = new Tensor(shape, false);
     std::vector<uint> expectedStrides = {12, 4, 1};
-    EXPECT_EQ(tensorPtr->getStrides(), expectedStrides);
+    EXPECT_EQ(tensorPtr->GetStrides(), expectedStrides);
     delete tensorPtr;
 }
