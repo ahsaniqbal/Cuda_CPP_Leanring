@@ -117,11 +117,11 @@ std::vector<uint> Tensor::CalculateBroadcastResultShape(const Tensor& other) con
  *
  * @param other a tensor, represents the tensor to be compared with
  */
-void Tensor::ValidateShape(const Tensor& other) {
+void Tensor::ValidateShapesBroadcastOperation(const Tensor& other) {
     int i = this->shape.size() - 1, j = other.shape.size() - 1;
 
     for (; i >= 0 and j >= 0; i--, j-- ) {
-        if (this->shape[i] != other.shape[j] and (this->shape[i] != 1 or other.shape[j] != 1)) {
+        if (this->shape[i] != other.shape[j] and (this->shape[i] != 1 and other.shape[j] != 1)) {
             throw std::invalid_argument("Shapes are not compatible for addition");
         }
     }
@@ -148,7 +148,7 @@ Tensor Tensor::operator+(Tensor& other) {
     if (isOnDevice != other.isOnDevice) {
         throw std::invalid_argument("Tensors must be on the same device");
     }
-    ValidateShape(other);
+    ValidateShapesBroadcastOperation(other);
     Tensor result(CalculateBroadcastResultShape(other), isOnDevice);
 
     if (isOnDevice) {

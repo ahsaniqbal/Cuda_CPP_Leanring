@@ -37,7 +37,7 @@ public:
     std::vector<uint> CalculateBroadcastedShape(const uint referenceShapeSize) const;
     std::vector<uint> CalculateBroadcastedStrides(const uint referenceShapeSize) const;
 
-    void ValidateShape(const Tensor& other);
+    void ValidateShapesBroadcastOperation(const Tensor& other);
     std::vector<uint> CalculateBroadcastResultShape(const Tensor& other) const;
 
     Tensor operator+(Tensor& b);
