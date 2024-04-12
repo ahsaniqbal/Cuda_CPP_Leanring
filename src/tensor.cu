@@ -9,13 +9,12 @@ __global__ void VectorAdd(float *vector1, float *vector2, float *result,
   }
 }
 
-__host__ __device__ uint CalculateLinearIndex(uint referenceLinearIndex, const uint *referenceShape, const uint *tensorShape,
-                                 const uint *referenceStrides, const uint *tensorStrides, const uint shapeSize) {
+__host__ __device__ uint CalculateLinearIndex(uint referenceLinearIndex, const uint *referenceStrides, const uint *tensorShape,
+                                              const uint *tensorStrides, const uint shapeSize) {
   uint resultIndex = 0;
   for (int i = 0; i < shapeSize; i++) {
-    int dimIndex = referenceLinearIndex / referenceShape[i];
+    int dimIndex = referenceLinearIndex / referenceStrides[i];
     referenceLinearIndex %= referenceStrides[i];
-    
     resultIndex += (tensorShape[i] == 1 ? 0 : dimIndex) * tensorStrides[i];
   }
   return  resultIndex;
@@ -46,16 +45,8 @@ __global__ void TensorAdd(float *result, float *tensor1, float *tensor2,
                           uint shapeSize, uint numElements) {
   uint index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < numElements) {
-    /*int tempIndex = index;
-    for (int i = 0; i < shapeSize; i++) {
-      int dimIndex = tempIndex / resultStrides[i];
-      tempIndex %= resultStrides[i];
-
-      index1 += (tensor1Shape[i] == 1 ? 0 : dimIndex) * tensor1Strides[i];
-      index2 += (tensor2Shape[i] == 1 ? 0 : dimIndex) * tensor2Strides[i];
-    }*/
-    uint index1 = CalculateLinearIndex(index, resultShape, tensor1Shape, resultStrides, tensor1Strides, shapeSize);
-    uint index2 = CalculateLinearIndex(index, resultShape, tensor2Shape, resultStrides, tensor2Strides, shapeSize);
+    uint index1 = CalculateLinearIndex(index, resultStrides, tensor1Shape, tensor1Strides, shapeSize);
+    uint index2 = CalculateLinearIndex(index, resultStrides, tensor2Shape, tensor2Strides, shapeSize);
     result[index] = tensor1[index1] + tensor2[index2];
   }
 }
@@ -85,16 +76,8 @@ __global__ void TensorMul(float *result, float *tensor1, float *tensor2,
                           uint shapeSize, uint numElements) {
   uint index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < numElements) {
-    /*int tempIndex = index;
-    for (int i = 0; i < shapeSize; i++) {
-      int dimIndex = tempIndex / resultStrides[i];
-      tempIndex %= resultStrides[i];
-
-      index1 += (tensor1Shape[i] == 1 ? 0 : dimIndex) * tensor1Strides[i];
-      index2 += (tensor2Shape[i] == 1 ? 0 : dimIndex) * tensor2Strides[i];
-    }*/
-    uint index1 = CalculateLinearIndex(index, resultShape, tensor1Shape, resultStrides, tensor1Strides, shapeSize);
-    uint index2 = CalculateLinearIndex(index, resultShape, tensor2Shape, resultStrides, tensor2Strides, shapeSize);
+    uint index1 = CalculateLinearIndex(index, resultStrides, tensor1Shape, tensor1Strides, shapeSize);
+    uint index2 = CalculateLinearIndex(index, resultStrides, tensor2Shape, tensor2Strides, shapeSize);
     result[index] = tensor1[index1] * tensor2[index2];
   }
 }

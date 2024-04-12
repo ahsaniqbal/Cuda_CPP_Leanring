@@ -139,9 +139,10 @@ std::vector<uint> Tensor::CalculateBroadcastedStrides(const uint referenceShapeS
     return result;
 }
 
-uint Tensor::CalculateLinearIndex(uint referenceLinearIndex, const std::vector<uint>& referenceShape, const std::vector<uint>& referenceStrides) const {
-    return ::CalculateLinearIndex(referenceLinearIndex, referenceShape.data(), CalculateBroadcastedShape(referenceShape.size()).data(),
-                                referenceStrides.data(), CalculateBroadcastedStrides(referenceShape.size()).data(), shape.size());
+uint Tensor::CalculateLinearIndex(uint referenceLinearIndex, const std::vector<uint>& referenceStrides) const {
+    auto referenceShapeSize = referenceStrides.size();
+    return ::CalculateLinearIndex(referenceLinearIndex, referenceStrides.data(), CalculateBroadcastedShape(referenceShapeSize).data(),
+                                  CalculateBroadcastedStrides(referenceShapeSize).data(), referenceShapeSize);
 }
 
 Tensor Tensor::operator+(Tensor& other) {
@@ -156,8 +157,8 @@ Tensor Tensor::operator+(Tensor& other) {
     }
     else {
         for (uint i = 0; i < result.numElements; i++) {            
-            uint aIndex = this->CalculateLinearIndex(i, result.shape, result.strides);
-            uint bIndex = other.CalculateLinearIndex(i, result.shape, result.strides);
+            uint aIndex = this->CalculateLinearIndex(i, result.strides);
+            uint bIndex = other.CalculateLinearIndex(i, result.strides);
             
             result.data_h[i] = data_h[aIndex] + other.data_h[bIndex];
         }

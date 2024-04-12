@@ -72,3 +72,35 @@ TEST_F(TensorTest, TestCalculateBroadcastResultShape) {
     EXPECT_EQ(Tensor({2, 4, 6, 4}, false).CalculateBroadcastResultShape(Tensor({1, 4, 1, 4}, false)), std::vector<uint>({2,4,6,4}));
     EXPECT_EQ(Tensor({1}, false).CalculateBroadcastResultShape(Tensor({4}, false)), std::vector<uint>({4}));
 }
+
+TEST_F(TensorTest, CalculateBroadcastedShape) {
+    EXPECT_EQ(Tensor({4}, false).CalculateBroadcastedShape(4), std::vector<uint>({1,1,1,4}));   
+    EXPECT_EQ(Tensor({4,4}, false).CalculateBroadcastedShape(2), std::vector<uint>({4,4}));
+}
+
+TEST_F(TensorTest, CalculateBroadcastedStrides) {
+    EXPECT_EQ(Tensor({4}, false).CalculateBroadcastedStrides(4), std::vector<uint>({4,4,4,1}));
+}
+
+TEST_F(TensorTest, CalculateLinearIndex) {
+    Tensor tensor1({4}, false);
+    
+    EXPECT_EQ(tensor1.CalculateLinearIndex(0, {12, 4, 1}), 0);
+    EXPECT_EQ(tensor1.CalculateLinearIndex(5, {12, 4, 1}), 1);
+    EXPECT_EQ(tensor1.CalculateLinearIndex(10, {12, 4, 1}), 2);
+    EXPECT_EQ(tensor1.CalculateLinearIndex(15, {12, 4, 1}), 3);
+
+
+    Tensor tensor2({3, 1}, false);
+    EXPECT_EQ(tensor2.CalculateLinearIndex(0, {12, 4, 1}), 0);
+    EXPECT_EQ(tensor2.CalculateLinearIndex(7, {12, 4, 1}), 1);
+    EXPECT_EQ(tensor2.CalculateLinearIndex(10, {12, 4, 1}), 2);
+    EXPECT_EQ(tensor2.CalculateLinearIndex(15, {12, 4, 1}), 0);
+    EXPECT_EQ(tensor2.CalculateLinearIndex(17, {12, 4, 1}), 1);
+    EXPECT_EQ(tensor2.CalculateLinearIndex(22, {12, 4, 1}), 2);
+
+    Tensor tensor3({2, 1, 1}, false);
+    EXPECT_EQ(tensor3.CalculateLinearIndex(5, {12, 4, 1}), 0);
+    EXPECT_EQ(tensor3.CalculateLinearIndex(21, {12, 4, 1}), 1);
+
+}

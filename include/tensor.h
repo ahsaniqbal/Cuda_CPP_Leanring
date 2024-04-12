@@ -33,7 +33,7 @@ public:
     void ToDevice();
     void ToHost();
 
-    uint CalculateLinearIndex(uint referenceLinearIndex, const std::vector<uint>& referenceShape, const std::vector<uint>& referenceStrides) const;
+    uint CalculateLinearIndex(uint referenceLinearIndex, /*const std::vector<uint>& referenceShape,*/ const std::vector<uint>& referenceStrides) const;
     std::vector<uint> CalculateBroadcastedShape(const uint referenceShapeSize) const;
     std::vector<uint> CalculateBroadcastedStrides(const uint referenceShapeSize) const;
 
@@ -44,6 +44,6 @@ public:
 };
 void LaunchAddKernel(Tensor &result, Tensor &tensor1, Tensor &tensor2);
 
-__host__ __device__ uint CalculateLinearIndex(uint referenceLinearIndex, const uint *referenceShape, const uint *tensorShape,
-                                 const uint *referenceStrides, const uint *tensorStrides, const uint shapeSize);
+__host__ __device__ uint CalculateLinearIndex(uint referenceLinearIndex, const uint *referenceStrides, const uint *tensorShape,
+                                const uint *tensorStrides, const uint shapeSize);
 #endif
