@@ -51,7 +51,7 @@ Tensor::Tensor(std::vector<float> data, std::vector<uint> shape, bool isOnDevice
  * 
  * @param other a tensor, represents the tensor to be copied
  */
-Tensor::Tensor(Tensor& other) {
+Tensor::Tensor(const Tensor& other) {
     this->isOnDevice = other.isOnDevice;
     this->numElements = other.numElements;
     this->shape = other.shape;
@@ -139,7 +139,7 @@ std::vector<uint> Tensor::CalculateBroadcastResultShape(const Tensor& other) con
  *
  * @param other a tensor, represents the tensor to be compared with
  */
-void Tensor::ValidateShapesBroadcastOperation(const Tensor& other) {
+void Tensor::ValidateShapesBroadcastOperation(const Tensor& other) const {
     int i = this->shape.size() - 1, j = other.shape.size() - 1;
 
     for (; i >= 0 and j >= 0; i--, j-- ) {
@@ -167,7 +167,7 @@ uint Tensor::CalculateLinearIndex(uint referenceLinearIndex, const std::vector<u
                                   CalculateBroadcastedStrides(referenceShapeSize).data(), referenceShapeSize);
 }
 
-Tensor Tensor::operator+(Tensor& other) {
+Tensor Tensor::operator+(const Tensor& other) const {
     if (isOnDevice != other.isOnDevice) {
         throw std::invalid_argument("Tensors must be on the same device");
     }

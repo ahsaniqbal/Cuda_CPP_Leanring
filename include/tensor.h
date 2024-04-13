@@ -6,7 +6,7 @@
 #include <vector>
 #include <numeric>
 #include <algorithm>
-#include <math.h>
+#include <cmath>
 #include <cuda_runtime.h>
 #define uint std::uint32_t
 
@@ -29,7 +29,7 @@ private:
 public:
     Tensor(std::vector<uint> shape, bool isOnDevice);
     Tensor(std::vector<float> data, std::vector<uint> shape, bool isOnDevice);
-    Tensor(Tensor& other);
+    Tensor(const Tensor& other);
     ~Tensor();
 
     std::vector<uint> GetShape() const { return shape; }
@@ -47,12 +47,12 @@ public:
     std::vector<uint> CalculateBroadcastedShape(const uint referenceShapeSize) const;
     std::vector<uint> CalculateBroadcastedStrides(const uint referenceShapeSize) const;
 
-    void ValidateShapesBroadcastOperation(const Tensor& other);
+    void ValidateShapesBroadcastOperation(const Tensor& other) const;
     std::vector<uint> CalculateBroadcastResultShape(const Tensor& other) const;
 
-    Tensor operator+(Tensor& b);
+    Tensor operator+(const Tensor& b) const;
 };
-void LaunchAddKernel(Tensor &result, Tensor &tensor1, Tensor &tensor2);
+void LaunchAddKernel(Tensor &result, const Tensor &tensor1, const Tensor &tensor2);
 
 __host__ __device__ uint CalculateLinearIndex(uint referenceLinearIndex, const uint *referenceStrides, const uint *tensorShape,
                                 const uint *tensorStrides, const uint shapeSize);
