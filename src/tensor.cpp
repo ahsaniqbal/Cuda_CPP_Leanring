@@ -15,13 +15,35 @@ Tensor::Tensor(std::vector<uint> shape, bool isOnDevice): data_h(nullptr), data_
     numElements = std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<uint>());
     if (this->isOnDevice) {
         cudaMalloc((void**)&data_d, numElements * sizeof(float));
+        cudaMemset(data_d, 0, numElements * sizeof(float));
     } else {
         data_h = new float[numElements];
+        std::fill(data_h, data_h + numElements, 0);
     }
     
-    for (int i = strides.size() - 2; i >= 0; i--) {
-        strides[i] = strides[i + 1] * shape[i + 1];
+    CalculateStrides();
+}
+
+Tensor::Tensor(std::vector<float> data, std::vector<uint> shape, bool isOnDevice): data_h(nullptr), data_d(nullptr), isOnDevice(isOnDevice), numElements(1), shape(shape), strides(shape.size(), 1) {
+    auto countZeroDims = std::count(shape.begin(), shape.end(), 0);
+    if (countZeroDims >= 1) {
+        throw std::invalid_argument("Tensor cannot have dimension with size 0.");
     }
+    
+    numElements = std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<uint>());
+    if (data.size() != numElements) {
+        throw std::invalid_argument("Data and shape are not consistent.");
+    }
+
+    if (this->isOnDevice) {
+        cudaMalloc((void**)&data_d, numElements * sizeof(float));
+        cudaMemcpy(data_d, data.data(), numElements * sizeof(float), cudaMemcpyHostToDevice);
+    } else {
+        data_h = new float[numElements];
+        std::copy(data.begin(), data.end(), data_h);
+    }
+    
+    CalculateStrides();
 }
 
 /**
