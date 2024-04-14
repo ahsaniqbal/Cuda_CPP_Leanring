@@ -149,6 +149,12 @@ void Tensor::ValidateShapesBroadcastOperation(const Tensor& other) const {
     }
 }
 
+void Tensor::ValidateOperationDevice(const Tensor& other) const {
+    if (isOnDevice != other.isOnDevice) {
+        throw std::invalid_argument("Tensors must be on the same device");
+    }
+}
+
 std::vector<uint> Tensor::CalculateBroadcastedShape(const uint referenceShapeSize) const {
     std::vector<uint> result(referenceShapeSize, 1);
     std::copy(shape.begin(), shape.end(), result.begin() + (referenceShapeSize - shape.size()));
@@ -168,10 +174,9 @@ uint Tensor::CalculateLinearIndex(uint referenceLinearIndex, const std::vector<u
 }
 
 Tensor Tensor::operator+(const Tensor& other) const {
-    if (isOnDevice != other.isOnDevice) {
-        throw std::invalid_argument("Tensors must be on the same device");
-    }
+    ValidateOperationDevice(other);
     ValidateShapesBroadcastOperation(other);
+
     Tensor result(CalculateBroadcastResultShape(other), isOnDevice);
 
     if (isOnDevice) {
@@ -183,6 +188,66 @@ Tensor Tensor::operator+(const Tensor& other) const {
             uint bIndex = other.CalculateLinearIndex(i, result.strides);
             
             result.data_h[i] = data_h[aIndex] + other.data_h[bIndex];
+        }
+    }
+    return result;
+}
+
+Tensor Tensor::operator-(const Tensor& other) const {
+    ValidateOperationDevice(other);
+    ValidateShapesBroadcastOperation(other);
+
+    Tensor result(CalculateBroadcastResultShape(other), isOnDevice);
+
+    if (isOnDevice) {
+        LaunchSubKernel(result, *this, other);
+    }
+    else {
+        for (uint i = 0; i < result.numElements; i++) {            
+            uint aIndex = this->CalculateLinearIndex(i, result.strides);
+            uint bIndex = other.CalculateLinearIndex(i, result.strides);
+            
+            result.data_h[i] = data_h[aIndex] - other.data_h[bIndex];
+        }
+    }
+    return result;
+}
+
+Tensor Tensor::operator*(const Tensor& other) const {
+    ValidateOperationDevice(other);
+    ValidateShapesBroadcastOperation(other);
+
+    Tensor result(CalculateBroadcastResultShape(other), isOnDevice);
+
+    if (isOnDevice) {
+        LaunchMulKernel(result, *this, other);
+    }
+    else {
+        for (uint i = 0; i < result.numElements; i++) {            
+            uint aIndex = this->CalculateLinearIndex(i, result.strides);
+            uint bIndex = other.CalculateLinearIndex(i, result.strides);
+            
+            result.data_h[i] = data_h[aIndex] * other.data_h[bIndex];
+        }
+    }
+    return result;
+}
+
+Tensor Tensor::operator/(const Tensor& other) const {
+    ValidateOperationDevice(other);
+    ValidateShapesBroadcastOperation(other);
+
+    Tensor result(CalculateBroadcastResultShape(other), isOnDevice);
+
+    if (isOnDevice) {
+        LaunchDivKernel(result, *this, other);
+    }
+    else {
+        for (uint i = 0; i < result.numElements; i++) {            
+            uint aIndex = this->CalculateLinearIndex(i, result.strides);
+            uint bIndex = other.CalculateLinearIndex(i, result.strides);
+            
+            result.data_h[i] = data_h[aIndex] / other.data_h[bIndex];
         }
     }
     return result;

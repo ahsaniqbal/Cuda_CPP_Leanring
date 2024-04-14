@@ -46,13 +46,20 @@ public:
     uint CalculateLinearIndex(uint referenceLinearIndex, const std::vector<uint>& referenceStrides) const;
     std::vector<uint> CalculateBroadcastedShape(const uint referenceShapeSize) const;
     std::vector<uint> CalculateBroadcastedStrides(const uint referenceShapeSize) const;
-
-    void ValidateShapesBroadcastOperation(const Tensor& other) const;
     std::vector<uint> CalculateBroadcastResultShape(const Tensor& other) const;
 
+    void ValidateOperationDevice(const Tensor& other) const;
+    void ValidateShapesBroadcastOperation(const Tensor& other) const;
+
     Tensor operator+(const Tensor& b) const;
+    Tensor operator-(const Tensor& b) const;
+    Tensor operator*(const Tensor& b) const;
+    Tensor operator/(const Tensor& b) const;
 };
 void LaunchAddKernel(Tensor &result, const Tensor &tensor1, const Tensor &tensor2);
+void LaunchSubKernel(Tensor &result, const Tensor &tensor1, const Tensor &tensor2);
+void LaunchMulKernel(Tensor &result, const Tensor &tensor1, const Tensor &tensor2);
+void LaunchDivKernel(Tensor &result, const Tensor &tensor1, const Tensor &tensor2);
 
 __host__ __device__ uint CalculateLinearIndex(uint referenceLinearIndex, const uint *referenceStrides, const uint *tensorShape,
                                 const uint *tensorStrides, const uint shapeSize);

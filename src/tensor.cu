@@ -26,10 +26,9 @@ __host__ __device__ uint CalculateLinearIndex(uint referenceLinearIndex, const u
  * The kernel expects the tensors shapes to be of same length and compatible according to broadcasting rules.
  * Similarly the strides of the tensors must be of same length and compatible with their shapes.
  * 
+ * @param result: The result tensor.
  * @param tensor1: The first tensor.
  * @param tensor2: The second tensor.
- * @param result: The result tensor.
- * @param resultShape: The shape of the result tensor.
  * @param tensor1Shape: The shape of the first tensor.
  * @param tensor2Shape: The shape of the second tensor.
  * @param resultStrides: The strides of the result tensor.
@@ -51,16 +50,27 @@ __global__ void TensorAdd(float *result, float *tensor1, float *tensor2,
   }
 }
 
+__global__ void TensorSub(float *result, float *tensor1, float *tensor2,
+                          uint *tensor1Shape, uint *tensor2Shape, 
+                          uint *resultStrides, uint *tensor1Strides, uint *tensor2Strides,
+                          uint shapeSize, uint numElements) {
+  uint index = blockIdx.x * blockDim.x + threadIdx.x;
+  if (index < numElements) {
+    uint index1 = CalculateLinearIndex(index, resultStrides, tensor1Shape, tensor1Strides, shapeSize);
+    uint index2 = CalculateLinearIndex(index, resultStrides, tensor2Shape, tensor2Strides, shapeSize);
+    result[index] = tensor1[index1] - tensor2[index2];
+  }
+}
+
 /**
  * Multilpies two tensor of compatible shapes.
  * 
  * The kernel expects the tensors shapes to be of same length and compatible according to broadcasting rules.
  * Similarly the strides of the tensors must be of same length and compatible with their shapes.
  * 
+ * @param result: The result tensor.
  * @param tensor1: The first tensor.
  * @param tensor2: The second tensor.
- * @param result: The result tensor.
- * @param resultShape: The shape of the result tensor.
  * @param tensor1Shape: The shape of the first tensor.
  * @param tensor2Shape: The shape of the second tensor.
  * @param resultStrides: The strides of the result tensor.
@@ -82,6 +92,45 @@ __global__ void TensorMul(float *result, float *tensor1, float *tensor2,
   }
 }
 
+__global__ void TensorDiv(float *result, float *tensor1, float *tensor2, 
+                          uint *tensor1Shape, uint *tensor2Shape, 
+                          uint *resultStrides, uint *tensor1Strides, uint *tensor2Strides,
+                          uint shapeSize, uint numElements) {
+  uint index = blockIdx.x * blockDim.x + threadIdx.x;
+  if (index < numElements) {
+    uint index1 = CalculateLinearIndex(index, resultStrides, tensor1Shape, tensor1Strides, shapeSize);
+    uint index2 = CalculateLinearIndex(index, resultStrides, tensor2Shape, tensor2Strides, shapeSize);
+    result[index] = tensor1[index1] / tensor2[index2];
+  }
+}
+
+void PrepareBroadcastOperationKernelLaunch(const Tensor &result, const Tensor &tensor1, const Tensor &tensor2,
+                                           uint **resultStrides, uint **tensor1Shape, uint **tensor1Strides,
+                                           uint **tensor2Shape, uint **tensor2Strides) {
+    uint shapeSize = result.GetShape().size();
+
+    cudaMalloc((void**)resultStrides, shapeSize * sizeof(uint));
+    cudaMemcpy(*resultStrides, result.GetStrides().data(), shapeSize * sizeof(uint), cudaMemcpyHostToDevice);
+
+    cudaMalloc((void**)tensor1Shape, shapeSize * sizeof(uint));
+    cudaMalloc((void**)tensor1Strides, shapeSize * sizeof(uint));
+    cudaMemcpy(*tensor1Shape, tensor1.CalculateBroadcastedShape(shapeSize).data(), shapeSize * sizeof(uint), cudaMemcpyHostToDevice);
+    cudaMemcpy(*tensor1Strides, tensor1.CalculateBroadcastedStrides(shapeSize).data(), shapeSize * sizeof(uint), cudaMemcpyHostToDevice);
+
+    cudaMalloc((void**)tensor2Shape, shapeSize * sizeof(uint));
+    cudaMalloc((void**)tensor2Strides, shapeSize * sizeof(uint));
+    cudaMemcpy(*tensor2Shape, tensor2.CalculateBroadcastedShape(shapeSize).data(), shapeSize * sizeof(uint), cudaMemcpyHostToDevice);
+    cudaMemcpy(*tensor2Strides, tensor2.CalculateBroadcastedStrides(shapeSize).data(), shapeSize * sizeof(uint), cudaMemcpyHostToDevice);
+
+}
+
+void CleanupBroadcastOperationKernelLaunch(uint *resultStrides, uint *tensor1Shape, uint *tensor1Strides, uint *tensor2Shape, uint *tensor2Strides) {
+    cudaFree(resultStrides);
+    cudaFree(tensor1Shape);
+    cudaFree(tensor1Strides);
+    cudaFree(tensor2Shape);
+    cudaFree(tensor2Strides);
+}
 
 void LaunchAddKernel(Tensor &result, const Tensor &tensor1, const Tensor &tensor2) {
     uint shapeSize = result.GetShape().size();
@@ -89,26 +138,48 @@ void LaunchAddKernel(Tensor &result, const Tensor &tensor1, const Tensor &tensor
 
     uint *resultStrides, *tensor1Shape, *tensor1Strides, *tensor2Shape, *tensor2Strides;
 
-    cudaMalloc((void**)&resultStrides, shapeSize * sizeof(uint));
-    cudaMemcpy(resultStrides, result.GetStrides().data(), shapeSize * sizeof(uint), cudaMemcpyHostToDevice);
-
-
-    cudaMalloc((void**)&tensor1Shape, shapeSize * sizeof(uint));
-    cudaMalloc((void**)&tensor1Strides, shapeSize * sizeof(uint));
-    cudaMemcpy(tensor1Shape, tensor1.CalculateBroadcastedShape(shapeSize).data(), shapeSize * sizeof(uint), cudaMemcpyHostToDevice);
-    cudaMemcpy(tensor1Strides, tensor1.CalculateBroadcastedStrides(shapeSize).data(), shapeSize * sizeof(uint), cudaMemcpyHostToDevice);
-
-    cudaMalloc((void**)&tensor2Shape, shapeSize * sizeof(uint));
-    cudaMalloc((void**)&tensor2Strides, shapeSize * sizeof(uint));
-    cudaMemcpy(tensor2Shape, tensor2.CalculateBroadcastedShape(shapeSize).data(), shapeSize * sizeof(uint), cudaMemcpyHostToDevice);
-    cudaMemcpy(tensor2Strides, tensor2.CalculateBroadcastedStrides(shapeSize).data(), shapeSize * sizeof(uint), cudaMemcpyHostToDevice);
-
+    PrepareBroadcastOperationKernelLaunch(result, tensor1, tensor2, &resultStrides, &tensor1Shape, &tensor1Strides, &tensor2Shape, &tensor2Strides);
 
     TensorAdd<<<static_cast<int>(std::ceil(numElements/ 256.0)), 256>>>(result.GetData(), tensor1.GetData(), tensor2.GetData(), tensor1Shape, tensor2Shape, resultStrides, tensor1Strides, tensor2Strides, shapeSize, numElements);
 
-    cudaFree(resultStrides);
-    cudaFree(tensor1Shape);
-    cudaFree(tensor1Strides);
-    cudaFree(tensor2Shape);
-    cudaFree(tensor2Strides);
+    CleanupBroadcastOperationKernelLaunch(resultStrides, tensor1Shape, tensor1Strides, tensor2Shape, tensor2Strides);
+}
+
+void LaunchSubKernel(Tensor &result, const Tensor &tensor1, const Tensor &tensor2) {
+    uint shapeSize = result.GetShape().size();
+    uint numElements = result.GetNumElements();
+
+    uint *resultStrides, *tensor1Shape, *tensor1Strides, *tensor2Shape, *tensor2Strides;
+
+    PrepareBroadcastOperationKernelLaunch(result, tensor1, tensor2, &resultStrides, &tensor1Shape, &tensor1Strides, &tensor2Shape, &tensor2Strides);
+
+    TensorSub<<<static_cast<int>(std::ceil(numElements/ 256.0)), 256>>>(result.GetData(), tensor1.GetData(), tensor2.GetData(), tensor1Shape, tensor2Shape, resultStrides, tensor1Strides, tensor2Strides, shapeSize, numElements);
+
+    CleanupBroadcastOperationKernelLaunch(resultStrides, tensor1Shape, tensor1Strides, tensor2Shape, tensor2Strides);
+}
+
+void LaunchMulKernel(Tensor &result, const Tensor &tensor1, const Tensor &tensor2) {
+    uint shapeSize = result.GetShape().size();
+    uint numElements = result.GetNumElements();
+
+    uint *resultStrides, *tensor1Shape, *tensor1Strides, *tensor2Shape, *tensor2Strides;
+
+    PrepareBroadcastOperationKernelLaunch(result, tensor1, tensor2, &resultStrides, &tensor1Shape, &tensor1Strides, &tensor2Shape, &tensor2Strides);
+
+    TensorMul<<<static_cast<int>(std::ceil(numElements/ 256.0)), 256>>>(result.GetData(), tensor1.GetData(), tensor2.GetData(), tensor1Shape, tensor2Shape, resultStrides, tensor1Strides, tensor2Strides, shapeSize, numElements);
+
+    CleanupBroadcastOperationKernelLaunch(resultStrides, tensor1Shape, tensor1Strides, tensor2Shape, tensor2Strides);
+}
+
+void LaunchDivKernel(Tensor &result, const Tensor &tensor1, const Tensor &tensor2) {
+    uint shapeSize = result.GetShape().size();
+    uint numElements = result.GetNumElements();
+
+    uint *resultStrides, *tensor1Shape, *tensor1Strides, *tensor2Shape, *tensor2Strides;
+
+    PrepareBroadcastOperationKernelLaunch(result, tensor1, tensor2, &resultStrides, &tensor1Shape, &tensor1Strides, &tensor2Shape, &tensor2Strides);
+
+    TensorDiv<<<static_cast<int>(std::ceil(numElements/ 256.0)), 256>>>(result.GetData(), tensor1.GetData(), tensor2.GetData(), tensor1Shape, tensor2Shape, resultStrides, tensor1Strides, tensor2Strides, shapeSize, numElements);
+
+    CleanupBroadcastOperationKernelLaunch(resultStrides, tensor1Shape, tensor1Strides, tensor2Shape, tensor2Strides);
 }
