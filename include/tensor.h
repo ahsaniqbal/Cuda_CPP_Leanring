@@ -7,6 +7,7 @@
 #include <numeric>
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cuda_runtime.h>
 #define uint std::uint32_t
 

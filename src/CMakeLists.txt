@@ -1,5 +1,4 @@
 find_package(OpenCV REQUIRED)
-find_package(CUDA REQUIRED)
 
 include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(${CUDA_INCLUDE_DIRS})
